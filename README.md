@@ -10,6 +10,7 @@ AArch64 bare-metal AM runtime and small tests for QEMU `mini-virt`
 | `hello` | Prints a fixed hello message; smoke test for console output and exit |
 | `minibench` | Integer loop and small-buffer memory loop with cycle counts |
 | `packedtest` | Checks packed 32-bit register allocation with a 64-bit add |
+| `microbench` | ALU, L1 ld/st, pair ld/st, and cmp+branch throughput |
 | `mem_test_latency` | Pointer-chasing memory latency test with cache-flush footprint |
 | `mem_test_bw` | Strided/unrolled memory bandwidth test (`mem` or `cache`) |
 
