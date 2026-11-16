@@ -1,0 +1,7 @@
+# Copy to config.local.mk and adjust the paths for your machine.
+#
+# QEMU must provide the custom mini-virt machine, e.g. the Arm QEMU fork in
+# unified-workload/arm-qemu.  A stock qemu-system-aarch64 has no mini-virt.
+#QEMU := /path/to/arm-qemu/build/qemu-system-aarch64
+#TOOLCHAIN_DIR := /path/to/arm-gnu-toolchain-13.2.Rel1
+#GEM5_HOME := /path/to/GEM5-kmhv3-aarch64-10-22

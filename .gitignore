@@ -1,0 +1,11 @@
+build/
+m5out*/
+config.local.mk
+__pycache__/
+*.log
+dramsim3*.json
+dramsim3.txt
+docs/
+gem5/
+patches/
+.ref/
