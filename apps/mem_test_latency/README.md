@@ -11,5 +11,9 @@ make APP=mem_test_latency run
 make APP=mem_test_latency INST=32 run
 ```
 
-QEMU has no cache model, so the absolute latency is only meaningful on a
-cycle-accurate model such as gem5.
+On the KMHv3 ideal gem5 platform the L3 is 48 MB, so the default
+`INST=16` only flushes 4 MB and the reported value is an L3-hit latency
+(about 30 cycles/load).  Use `INST=256` (64 MB flush) to evict the list
+from L3; it then reports the DRAM latency (about 238 cycles/load on the
+current platform).  QEMU has no cache model, so only gem5/RTL numbers are
+meaningful.
