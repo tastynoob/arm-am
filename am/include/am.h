@@ -45,6 +45,11 @@ void am_puts(const char *string);
  */
 uint64_t am_read_cycles(void);
 
+/* PMEVCNTR0_EL0 / INST_RETIRED (event 0x08); 0 when unsupported. */
+uint64_t am_read_instret(void);
+int am_pmu_available(void);
+int am_instret_available(void);
+
 /* CNTVCT_EL0 based monotonic microsecond counter. */
 uint64_t am_read_time_us(void);
 

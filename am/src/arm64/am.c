@@ -9,6 +9,8 @@ extern __attribute__((noreturn)) void _exit(int status);
 
 /* 1: PMCCNTR_EL0, 0: CNTVCT_EL0 fallback. */
 static int cycle_counter_is_pmu;
+/* 1: PMEVCNTR0_EL0 counts INST_RETIRED (event 0x08). */
+static int instret_counter_is_pmu;
 
 _Area _heap;
 
@@ -21,6 +23,7 @@ _Area _heap;
 void am_early_init(void)
 {
     uint64_t id_aa64dfr0;
+    uint64_t pmceid0;
     uint64_t pmcr;
 
     _heap.start = __heap_start;
@@ -32,11 +35,29 @@ void am_early_init(void)
         return;
     }
 
-    /* PMCR_EL0: E=1 (enable), C=1 (reset cycle counter). */
-    pmcr = 5;
+    /*
+     * PMCR_EL0: E=1 (enable), P=1 (reset event counters),
+     * C=1 (reset cycle counter), D=0 (do not divide by 64).
+     */
+    pmcr = (1U << 0) | (1U << 1) | (1U << 2);
     __asm__ volatile("msr pmcr_el0, %0" ::"r"(pmcr));
-    /* PMCNTENSET_EL0: bit 31 enables PMCCNTR. */
-    pmcr = 1ULL << 31;
+
+    /*
+     * Event 0x08 is the architected INST_RETIRED event.  It is still worth
+     * checking PMCEID0: PMUv3 is optional and not every implementation
+     * offers every event.
+     */
+    __asm__ volatile("mrs %0, pmceid0_el0" : "=r"(pmceid0));
+    if ((pmceid0 & (1ULL << 8)) != 0U) {
+        uint64_t event = 0x08;
+
+        __asm__ volatile("msr pmevtyper0_el0, %0" ::"r"(event));
+        __asm__ volatile("msr pmevcntr0_el0, xzr");
+        instret_counter_is_pmu = 1;
+    }
+
+    /* PMCNTENSET_EL0: bit 31 is PMCCNTR, bit 0 is PMEVCNTR0. */
+    pmcr = (1ULL << 31) | (instret_counter_is_pmu ? 1ULL : 0ULL);
     __asm__ volatile("msr pmcntenset_el0, %0" ::"r"(pmcr));
     __asm__ volatile("isb");
 
@@ -45,6 +66,7 @@ void am_early_init(void)
         cycle_counter_is_pmu = 1;
     }
 }
+
 
 uint64_t am_read_cycles(void)
 {
@@ -56,6 +78,27 @@ uint64_t am_read_cycles(void)
         __asm__ volatile("isb\n\tmrs %0, cntvct_el0" : "=r"(value));
     }
     return value;
+}
+
+uint64_t am_read_instret(void)
+{
+    uint64_t value = 0;
+
+    if (instret_counter_is_pmu) {
+        __asm__ volatile("isb\n\tmrs %0, pmevcntr0_el0" : "=r"(value));
+        value &= 0xffffffffULL;
+    }
+    return value;
+}
+
+int am_pmu_available(void)
+{
+    return cycle_counter_is_pmu;
+}
+
+int am_instret_available(void)
+{
+    return instret_counter_is_pmu;
 }
 
 uint64_t am_read_time_us(void)
