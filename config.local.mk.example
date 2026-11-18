@@ -4,4 +4,7 @@
 # unified-workload/arm-qemu.  A stock qemu-system-aarch64 has no mini-virt.
 #QEMU := /path/to/arm-qemu/build/qemu-system-aarch64
 #TOOLCHAIN_DIR := /path/to/arm-gnu-toolchain-13.2.Rel1
-#GEM5_HOME := /path/to/GEM5-kmhv3-aarch64-10-22
+# Bare-metal gem5 tree with the raw-cpt (--generic-arm-cpt) interface.
+#GEM5_HOME := /path/to/GEM5-kmhv3-aarch64
+# Optional difftest reference model; when present, gem5-run enables it.
+#DIFFTEST_REF_SO := /path/to/qemu/build/libqemu-aarch64-difftest.so

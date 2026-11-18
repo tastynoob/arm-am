@@ -16,10 +16,16 @@ UART_BASE ?= 0x13000000
 
 # The gem5 tree must contain the --bare-metal QEMU-aligned platform change
 # (see gem5/README.md and gem5/patch_baremetal_qemu_aligned.py).
-GEM5_HOME ?= /home/workspace/GEM5-kmhv3-aarch64-10-22
+#
+# The current bare-metal interface takes the flat .bin image through
+# --generic-arm-cpt --raw-cpt (not --kernel <elf>), and can cross-check it
+# against QEMU with --enable-difftest.
+GEM5_HOME ?= $(HOME)/workspace/GEM5-kmhv3-aarch64
 GEM5 ?= $(GEM5_HOME)/build/ARM/gem5.fast
 GEM5_CONFIG ?= configs/example/idealkmhv3_arm.py
-GEM5_OUTDIR ?= m5out-gem5
+GEM5_OUTDIR ?= $(BUILD_DIR)/m5out-gem5
+DIFFTEST_REF_SO ?= $(HOME)/workspace/qemu/build/libqemu-aarch64-difftest.so
+GEM5_DIFFTEST ?= $(if $(wildcard $(DIFFTEST_REF_SO)),--enable-difftest --difftest-ref-so $(DIFFTEST_REF_SO))
 GEM5_ARGS ?=
 
 CC := $(CROSS_COMPILE)gcc
@@ -69,8 +75,10 @@ DEPFILES := $(RUNTIME_OBJECTS:.o=.d) $(APP_OBJECT:.o=.d)
 COMMON_STAMP := $(COMMON_BUILD)/.build-config
 APP_STAMP := $(BUILD_DIR)/.build-config
 
+MICROTEST_TESTS := $(sort $(basename $(notdir $(wildcard apps/microtest/tests/*.c))))
+
 .PHONY: all build run gem5-run clean list help cputest cputest-build \
-	cputest-gem5 FORCE
+	cputest-gem5 microtest microtest-build microtest-gem5 FORCE
 
 all: $(BIN)
 
@@ -78,13 +86,18 @@ build: all
 
 list:
 	@printf 'apps:   %s\n' '$(notdir $(wildcard apps/*))'
+	@printf 'microtest: %s\n' '$(MICROTEST_TESTS)'
 	@printf 'suites: cputest\n'
 
 help:
 	@printf '%s\n' \
 		'make APP=<app> build       build one app' \
 		'make APP=<app> run         build and run one app under QEMU' \
-		'make APP=<app> gem5-run    run the ELF on gem5 (--bare-metal)' \
+		'make APP=<app> gem5-run    run the raw .bin on gem5 (--bare-metal)' \
+		'make microtest             build and run every microtest .bin on QEMU' \
+		'make microtest-build       build every microtest .bin (one per test)' \
+		'make microtest-gem5        run every microtest .bin on gem5' \
+		'make microtest TEST=ld     just one microtest .bin' \
 		'make cputest               build and run tests/cputest on QEMU' \
 		'make cputest-build         build tests/cputest only' \
 		'make cputest-gem5          run tests/cputest on gem5' \
@@ -92,7 +105,7 @@ help:
 		'make APP=mem_test_bw TEST_TYPE=cache run' \
 		'make clean                 remove build/' \
 		'' \
-		'Overridable: ARCH APP QEMU CPU MEMORY UART_BASE GEM5_HOME GEM5 GEM5_CONFIG GEM5_ARGS TOOLCHAIN_DIR CROSS_COMPILE'
+		'Overridable: ARCH APP QEMU CPU MEMORY UART_BASE GEM5_HOME GEM5 GEM5_CONFIG GEM5_OUTDIR DIFFTEST_REF_SO GEM5_ARGS ITERS TEST TOOLCHAIN_DIR CROSS_COMPILE'
 
 $(COMMON_BUILD) $(BUILD_DIR):
 	@mkdir -p $@
@@ -152,10 +165,27 @@ run: $(BIN)
 		-nographic -monitor none -kernel $(BIN)
 
 # gem5 --bare-metal: RAM 0x40000000, SimpleUart 0x13000000, HLT #0.
-gem5-run: $(ELF)
+# The bare-metal interface loads the flat .bin image, not the ELF.
+gem5-run: $(BIN)
 	cd $(GEM5_HOME) && $(GEM5) -d $(abspath $(GEM5_OUTDIR)) \
-		$(GEM5_CONFIG) --bare-metal \
-		--kernel $(abspath $(ELF)) $(GEM5_ARGS)
+		$(GEM5_CONFIG) --raw-cpt --bare-metal \
+		--generic-arm-cpt $(abspath $(BIN)) $(GEM5_DIFFTEST) $(GEM5_ARGS)
+
+microtest:
+	@$(MAKE) --no-print-directory -f apps/microtest/suite.mk \
+		ROOT=$(CURDIR) ARCH=$(ARCH) TEST="$(TEST)" ITERS="$(ITERS)" \
+		QEMU="$(QEMU)" CPU=$(CPU) MEMORY=$(MEMORY) all run
+
+microtest-build:
+	@$(MAKE) --no-print-directory -f apps/microtest/suite.mk \
+		ROOT=$(CURDIR) ARCH=$(ARCH) TEST="$(TEST)" ITERS="$(ITERS)" all
+
+microtest-gem5:
+	@$(MAKE) --no-print-directory -f apps/microtest/suite.mk \
+		ROOT=$(CURDIR) ARCH=$(ARCH) TEST="$(TEST)" ITERS="$(ITERS)" \
+		GEM5_HOME="$(GEM5_HOME)" GEM5="$(GEM5)" \
+		GEM5_CONFIG="$(GEM5_CONFIG)" DIFFTEST_REF_SO="$(DIFFTEST_REF_SO)" \
+		GEM5_ARGS="$(GEM5_ARGS)" all run-gem5
 
 cputest:
 	@$(MAKE) --no-print-directory -f tests/cputest/suite.mk \
