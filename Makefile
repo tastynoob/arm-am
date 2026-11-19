@@ -23,7 +23,7 @@ UART_BASE ?= 0x13000000
 GEM5_HOME ?= $(HOME)/workspace/GEM5-kmhv3-aarch64
 GEM5 ?= $(GEM5_HOME)/build/ARM/gem5.fast
 GEM5_CONFIG ?= configs/example/idealkmhv3_arm.py
-GEM5_OUTDIR ?= $(BUILD_DIR)/m5out-gem5
+GEM5_OUTDIR ?= $(BUILD_DIR)/m5out-gem5/$(APP_NAME)
 DIFFTEST_REF_SO ?= $(HOME)/workspace/qemu/build/libqemu-aarch64-difftest.so
 GEM5_DIFFTEST ?= $(if $(wildcard $(DIFFTEST_REF_SO)),--enable-difftest --difftest-ref-so $(DIFFTEST_REF_SO))
 GEM5_ARGS ?=
@@ -33,16 +33,41 @@ CXX := $(CROSS_COMPILE)g++
 OBJCOPY := $(CROSS_COMPILE)objcopy
 OBJDUMP := $(CROSS_COMPILE)objdump
 
-# Per-app overrides: APP_SOURCE, APP_NAME, APP_CPPFLAGS, APP_CFLAGS.
+# Per-app build rules.  For a multi-test app/test set this is the shared mk
+# used by every test in the set.
 -include $(APP_DIR)/app.mk
 
-APP_SOURCE ?= $(firstword $(wildcard $(APP_DIR)/main.c $(APP_DIR)/main.cpp))
+# An app is a test set.  Every set has one or more tests and every test
+# produces one .bin in the set's build directory.  A one-test set keeps its
+# only test at apps/<app>/main.c; a multi-test set uses
+# apps/<app>/<test>/main.c.  The shared app.mk/README and TEST selection are
+# the same in both cases.  The recursive one-test build (APP_SOURCE set) is
+# the only internal mode.
+TEST_BUILD := $(if $(strip $(APP_SOURCE)),1,)
+
+ifeq ($(TEST_BUILD),)
+APP_SUBTESTS := $(patsubst $(APP_DIR)/%/main.c,%,$(wildcard $(APP_DIR)/*/main.c))
+APP_TESTS := $(if $(APP_SUBTESTS),$(APP_SUBTESTS),$(if $(wildcard $(APP_DIR)/main.c $(APP_DIR)/main.cpp),$(APP_NAME),))
+ifeq ($(strip $(APP_TESTS)),)
+$(error No tests found: expected $(APP_DIR)/main.c, $(APP_DIR)/main.cpp, or $(APP_DIR)/<test>/main.c)
+endif
+SINGLE_TEST := $(if $(APP_SUBTESTS),,1)
+ifneq ($(strip $(TEST)),)
+ifeq ($(filter $(TEST),$(APP_TESTS)),)
+$(error unknown test '$(TEST)' in $(APP); available: $(APP_TESTS))
+endif
+TESTS := $(TEST)
+else
+TESTS := $(APP_TESTS)
+endif
+else
 ifeq ($(strip $(APP_SOURCE)),)
-$(error No source found: expected $(APP_DIR)/main.c or $(APP_DIR)/main.cpp)
+$(error No source found for test build)
+endif
 endif
 
 COMMON_BUILD ?= build/$(ARCH)/common
-BUILD_DIR ?= build/$(ARCH)/$(APP_NAME)
+BUILD_DIR ?= build/$(ARCH)/$(APP)
 
 ELF := $(BUILD_DIR)/$(APP_NAME).elf
 BIN := $(BUILD_DIR)/$(APP_NAME).bin
@@ -58,8 +83,8 @@ LDFLAGS := -nostdlib -static -no-pie \
 	-Wl,--build-id=none -Wl,--no-warn-rwx-segments
 
 CPPFLAGS := $(BASE_CPPFLAGS) -I$(APP_DIR) -I$(APP_DIR)/include $(APP_CPPFLAGS)
-CFLAGS := $(BASE_CFLAGS) $(APP_CFLAGS)
-CXXFLAGS := $(CFLAGS) -std=c++17 -fno-exceptions -fno-rtti \
+CFLAGS := $(BASE_CFLAGS) -std=gnu17 $(APP_CFLAGS)
+CXXFLAGS := $(BASE_CFLAGS) $(APP_CFLAGS) -std=c++17 -fno-exceptions -fno-rtti \
 	-fno-threadsafe-statics
 ASFLAGS := $(BASE_ASFLAGS)
 
@@ -67,37 +92,84 @@ RUNTIME_OBJECTS := $(COMMON_BUILD)/start.o $(COMMON_BUILD)/newlib_syscalls.o \
 	$(COMMON_BUILD)/platform.o $(COMMON_BUILD)/am.o \
 	$(COMMON_BUILD)/ioe.o $(COMMON_BUILD)/klib.o \
 	$(COMMON_BUILD)/libc_shim.o
-APP_OBJECT := $(BUILD_DIR)/main.o
+APP_OBJECT := $(BUILD_DIR)/$(APP_NAME).o
 DEPFILES := $(RUNTIME_OBJECTS:.o=.d) $(APP_OBJECT:.o=.d)
 
 # Rebuild objects when compile flags (e.g. TEST_TYPE/INST/UART_BASE) change.
 # The stamp file is only touched when its contents actually differ.
 COMMON_STAMP := $(COMMON_BUILD)/.build-config
-APP_STAMP := $(BUILD_DIR)/.build-config
+APP_STAMP := $(BUILD_DIR)/.$(APP_NAME).build-config
 
-MICROTEST_TESTS := $(sort $(basename $(notdir $(wildcard apps/microtest/tests/*.c))))
+APP_NAMES := $(notdir $(patsubst %/,%,$(wildcard apps/*/)))
 
 .PHONY: all build run gem5-run clean list help cputest cputest-build \
-	cputest-gem5 microtest microtest-build microtest-gem5 FORCE
+	cputest-gem5 FORCE
 
+ifeq ($(TEST_BUILD),)
+# Test-set mode: one recursive build/run per small test, all sharing app.mk.
+all:
+	@set -e; for test in $(TESTS); do \
+		printf '\n== %s/%s ==\n' '$(APP)' "$$test"; \
+		$(MAKE) --no-print-directory ARCH=$(ARCH) \
+			APP=$(APP) APP_NAME=$$test \
+			APP_SOURCE=$(if $(SINGLE_TEST),$(firstword $(wildcard $(APP_DIR)/main.c $(APP_DIR)/main.cpp)),$(APP_DIR)/$$test/main.c) \
+			BUILD_DIR=$(BUILD_DIR) \
+			build; \
+	done
+else
 all: $(BIN)
+endif
 
 build: all
 
+ifeq ($(TEST_BUILD),)
+run:
+	@set -e; for test in $(TESTS); do \
+		printf '\n== %s/%s ==\n' '$(APP)' "$$test"; \
+		$(MAKE) --no-print-directory ARCH=$(ARCH) \
+			APP=$(APP) APP_NAME=$$test \
+			APP_SOURCE=$(if $(SINGLE_TEST),$(firstword $(wildcard $(APP_DIR)/main.c $(APP_DIR)/main.cpp)),$(APP_DIR)/$$test/main.c) \
+			BUILD_DIR=$(BUILD_DIR) \
+			run; \
+	done
+else
+run: $(BIN)
+	$(QEMU) -M mini-virt,platform=bm -cpu $(CPU) -smp 1 -m $(MEMORY) \
+		-nographic -monitor none -kernel $(BIN)
+endif
+
+ifeq ($(TEST_BUILD),)
+gem5-run:
+	@set -e; for test in $(TESTS); do \
+		printf '\n== %s/%s ==\n' '$(APP)' "$$test"; \
+		$(MAKE) --no-print-directory ARCH=$(ARCH) \
+			APP=$(APP) APP_NAME=$$test \
+			APP_SOURCE=$(if $(SINGLE_TEST),$(firstword $(wildcard $(APP_DIR)/main.c $(APP_DIR)/main.cpp)),$(APP_DIR)/$$test/main.c) \
+			BUILD_DIR=$(BUILD_DIR) \
+			gem5-run; \
+	done
+else
+# gem5 --bare-metal: RAM 0x40000000, SimpleUart 0x13000000, HLT #0.
+# The bare-metal interface loads the flat .bin image, not the ELF.
+gem5-run: $(BIN)
+	cd $(GEM5_HOME) && $(GEM5) -d $(abspath $(GEM5_OUTDIR)) \
+		$(GEM5_CONFIG) --raw-cpt --bare-metal \
+		--generic-arm-cpt $(abspath $(BIN)) $(GEM5_DIFFTEST) $(GEM5_ARGS)
+endif
+
 list:
-	@printf 'apps:   %s\n' '$(notdir $(wildcard apps/*))'
-	@printf 'microtest: %s\n' '$(MICROTEST_TESTS)'
+	@printf 'apps:   %s\n' '$(APP_NAMES)'
 	@printf 'suites: cputest\n'
 
 help:
 	@printf '%s\n' \
-		'make APP=<app> build       build one app' \
-		'make APP=<app> run         build and run one app under QEMU' \
-		'make APP=<app> gem5-run    run the raw .bin on gem5 (--bare-metal)' \
-		'make microtest             build and run every microtest .bin on QEMU' \
-		'make microtest-build       build every microtest .bin (one per test)' \
-		'make microtest-gem5        run every microtest .bin on gem5' \
-		'make microtest TEST=ld     just one microtest .bin' \
+		'make APP=<app> build       build all tests in one app/test set' \
+		'make APP=<app> TEST=<t>    build only one test of a test set' \
+		'make APP=<app> run         build and run the app/test set under QEMU' \
+		'make APP=<app> gem5-run    run the app/test set on gem5 (--bare-metal)' \
+		'make APP=throughput run    all instruction-throughput tests' \
+		'make APP=throughput TEST=alu run   one throughput test' \
+		'make APP=stream_ld FOOTPRINT=64M PASSES=2 run' \
 		'make cputest               build and run tests/cputest on QEMU' \
 		'make cputest-build         build tests/cputest only' \
 		'make cputest-gem5          run tests/cputest on gem5' \
@@ -105,7 +177,7 @@ help:
 		'make APP=mem_test_bw TEST_TYPE=cache run' \
 		'make clean                 remove build/' \
 		'' \
-		'Overridable: ARCH APP QEMU CPU MEMORY UART_BASE GEM5_HOME GEM5 GEM5_CONFIG GEM5_OUTDIR DIFFTEST_REF_SO GEM5_ARGS ITERS TEST TOOLCHAIN_DIR CROSS_COMPILE'
+		'Overridable: ARCH APP TEST QEMU CPU MEMORY UART_BASE GEM5_HOME GEM5 GEM5_CONFIG GEM5_OUTDIR DIFFTEST_REF_SO GEM5_ARGS ITERS FOOTPRINT PASSES CHAINS FLUSH TOOLCHAIN_DIR CROSS_COMPILE'
 
 $(COMMON_BUILD) $(BUILD_DIR):
 	@mkdir -p $@
@@ -159,33 +231,6 @@ $(ELF): $(RUNTIME_OBJECTS) $(APP_OBJECT) am/src/platform/mini-virt/linker.ld
 
 $(BIN): $(ELF)
 	$(OBJCOPY) -O binary $< $@
-
-run: $(BIN)
-	$(QEMU) -M mini-virt,platform=bm -cpu $(CPU) -smp 1 -m $(MEMORY) \
-		-nographic -monitor none -kernel $(BIN)
-
-# gem5 --bare-metal: RAM 0x40000000, SimpleUart 0x13000000, HLT #0.
-# The bare-metal interface loads the flat .bin image, not the ELF.
-gem5-run: $(BIN)
-	cd $(GEM5_HOME) && $(GEM5) -d $(abspath $(GEM5_OUTDIR)) \
-		$(GEM5_CONFIG) --raw-cpt --bare-metal \
-		--generic-arm-cpt $(abspath $(BIN)) $(GEM5_DIFFTEST) $(GEM5_ARGS)
-
-microtest:
-	@$(MAKE) --no-print-directory -f apps/microtest/suite.mk \
-		ROOT=$(CURDIR) ARCH=$(ARCH) TEST="$(TEST)" ITERS="$(ITERS)" \
-		QEMU="$(QEMU)" CPU=$(CPU) MEMORY=$(MEMORY) all run
-
-microtest-build:
-	@$(MAKE) --no-print-directory -f apps/microtest/suite.mk \
-		ROOT=$(CURDIR) ARCH=$(ARCH) TEST="$(TEST)" ITERS="$(ITERS)" all
-
-microtest-gem5:
-	@$(MAKE) --no-print-directory -f apps/microtest/suite.mk \
-		ROOT=$(CURDIR) ARCH=$(ARCH) TEST="$(TEST)" ITERS="$(ITERS)" \
-		GEM5_HOME="$(GEM5_HOME)" GEM5="$(GEM5)" \
-		GEM5_CONFIG="$(GEM5_CONFIG)" DIFFTEST_REF_SO="$(DIFFTEST_REF_SO)" \
-		GEM5_ARGS="$(GEM5_ARGS)" all run-gem5
 
 cputest:
 	@$(MAKE) --no-print-directory -f tests/cputest/suite.mk \

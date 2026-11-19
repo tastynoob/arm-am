@@ -9,7 +9,7 @@
  *
  * Registers: x9 = base, x10 = loop counter, x1..x8 = sources.
  */
-#include "bench.h"
+#include <bench.h>
 
 #define ST8(off) \
     "str x1, [x9, #" #off "]\n\t" \

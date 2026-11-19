@@ -7,7 +7,7 @@
  * fuses each compare/branch pair into one macro-op (32 pairs would then
  * retire as ~32 instructions instead of 64).  ops/cyc counts pairs.
  */
-#include "bench.h"
+#include <bench.h>
 
 #define CMP8 \
     "cmp x10, x11\n\t" \

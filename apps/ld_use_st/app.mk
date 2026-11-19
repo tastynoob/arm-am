@@ -1,0 +1,3 @@
+# ITERS is the loop trip count.
+ITERS ?= 100000
+APP_CPPFLAGS += -DBENCH_ITERS=$(ITERS)ULL

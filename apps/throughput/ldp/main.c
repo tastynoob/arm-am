@@ -10,7 +10,7 @@
  * x0..x7/x10..x17 = destinations.  The base is centered because the LDP
  * immediate range is only -512..504.
  */
-#include "bench.h"
+#include <bench.h>
 
 #define LDP8(off) \
     "ldp x0, x1, [x9, #" #off "]\n\t" \

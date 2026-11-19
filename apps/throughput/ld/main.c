@@ -8,7 +8,7 @@
  *
  * Registers: x9 = base, x10 = loop counter, x1..x8 = destinations.
  */
-#include "bench.h"
+#include <bench.h>
 
 #define LD8(off) \
     "ldr x1, [x9, #" #off "]\n\t" \

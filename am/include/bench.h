@@ -1,15 +1,16 @@
 /*
- * Shared harness for the arm-am microtest benchmarks.
+ * Shared harness for the arm-am microbenchmark apps.
  *
- * Every benchmark is a standalone program under tests/: it includes this
- * header, implements one timed loop, and calls bench_run() from main().
- * suite.mk builds one .bin per test, so benchmarks never share a run, a
- * warm-up, or a PMU counter window with each other.
+ * A benchmark is a standalone app under apps/throughput/<name>/ or apps/<name>/:
+ * its main.c includes this header, implements one timed loop, and calls
+ * bench_run() (or uses the pass helpers).  Each app builds one .bin, so
+ * benchmarks never share a run, a warm-up, or a PMU counter window.
  */
-#ifndef ARM_AM_MICROTEST_BENCH_H
-#define ARM_AM_MICROTEST_BENCH_H
+#ifndef ARM_AM_BENCH_H
+#define ARM_AM_BENCH_H
 
 #include <am.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -31,13 +32,83 @@ static uint64_t bench_buffer[BENCH_BUFFER_U64]
     __attribute__((aligned(64), unused));
 static volatile uint64_t bench_sink __attribute__((unused));
 
-static inline void bench_banner(const char *name)
+static inline void bench_pmu_banner(void)
 {
-    printf("arm-am: microtest %s (iters=%llu)\n", name,
-           (unsigned long long)BENCH_ITERS);
     printf("PMU: cycle=%s instret=%s\n",
            am_pmu_available() ? "yes" : "no (CNTVCT fallback)",
            am_instret_available() ? "yes" : "no");
+}
+
+static inline void bench_banner(const char *name)
+{
+    printf("arm-am: bench %s (iters=%llu)\n", name,
+           (unsigned long long)BENCH_ITERS);
+    bench_pmu_banner();
+}
+
+/* Banner for tests whose trip count is not BENCH_ITERS (streaming passes). */
+static inline void bench_banner_plain(const char *name)
+{
+    printf("arm-am: bench %s\n", name);
+    bench_pmu_banner();
+}
+
+/*
+ * Large-footprint tests allocate their working set from the AM heap instead
+ * of .bss, so the boot-time BSS clear never touches a 64 MiB+ buffer.  _sbrk
+ * advances the heap break; the returned pointer is aligned to 64 B.
+ */
+extern void *_sbrk(ptrdiff_t increment);
+
+static inline void *bench_alloc(uint64_t bytes)
+{
+    void *raw;
+
+    if (bytes == 0) {
+        return NULL;
+    }
+    raw = _sbrk((ptrdiff_t)(bytes + 63U));
+    if (raw == (void *)-1) {
+        return NULL;
+    }
+    return (void *)(((uintptr_t)raw + 63U) & ~(uintptr_t)63U);
+}
+
+/* Parse "64M", "1G", "512K" or a plain byte count. */
+static inline uint64_t bench_parse_size(const char *text)
+{
+    uint64_t value = 0;
+
+    while (*text >= '0' && *text <= '9') {
+        value = value * 10U + (uint64_t)(*text - '0');
+        text++;
+    }
+    if (*text == 'K' || *text == 'k') {
+        value <<= 10;
+    } else if (*text == 'M' || *text == 'm') {
+        value <<= 20;
+    } else if (*text == 'G' || *text == 'g') {
+        value <<= 30;
+    }
+    return value;
+}
+
+/* Untimed setup helpers: a fill pass and a separate-buffer cache flush. */
+static inline void bench_fill(uint64_t base, uint64_t bytes, uint64_t seed)
+{
+    for (uint64_t offset = 0; offset < bytes; offset += 8) {
+        *(volatile uint64_t *)(uintptr_t)(base + offset) = seed ^ offset;
+    }
+}
+
+static inline void bench_flush_cache(uint64_t base, uint64_t bytes)
+{
+    volatile uint64_t checksum = 0;
+
+    for (uint64_t offset = 0; offset < bytes; offset += 64) {
+        checksum += *(const volatile uint64_t *)(uintptr_t)(base + offset);
+    }
+    bench_sink ^= checksum;
 }
 
 /*
@@ -100,9 +171,9 @@ static inline int bench_run(const char *name, bench_fn fn,
     bench_sink ^= result;
     bench_report(name, cycles, instret, ops_per_iter * BENCH_ITERS,
                  bytes_per_iter * BENCH_ITERS);
-    printf("microtest %s: PASS sink=0x%016llx\n", name,
+    printf("bench %s: PASS sink=0x%016llx\n", name,
            (unsigned long long)bench_sink);
     return 0;
 }
 
-#endif /* ARM_AM_MICROTEST_BENCH_H */
+#endif /* ARM_AM_BENCH_H */

@@ -4,7 +4,7 @@
  * No memory is touched, so this measures rename/issue/ALU width and the
  * sustained integer ALU throughput of the core.
  */
-#include "bench.h"
+#include <bench.h>
 
 #define ALU8 \
     "add x1, x1, #1\n\t" \

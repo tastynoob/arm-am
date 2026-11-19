@@ -9,7 +9,7 @@
  * x0..x7/x10..x17 = sources.  The base is centered because the STP
  * immediate range is only -512..504.
  */
-#include "bench.h"
+#include <bench.h>
 
 #define STP8(off) \
     "stp x0, x1, [x9, #" #off "]\n\t" \
