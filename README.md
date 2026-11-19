@@ -19,6 +19,7 @@ AArch64 bare-metal AM runtime and small tests for QEMU `mini-virt`
 | `frontend_test` | Frontend fetch/branch/history/RAS/width tests ported from OpenXiangShan nexus-am `tests/frontendtest` |
 | `br_target_test` | Call, indirect, jump and return branch-target tests |
 | `cond_br_test` | Conditional-branch direction patterns |
+| `mem_dep` | Single-core RAW/WAR memory-dependence violation tests |
 
 An app is a test set.  Every test produces one `.bin`, and `TEST=<name>`
 selects a test in any set.  A one-test app such as `hello` is simply a test set
@@ -43,6 +44,7 @@ make APP=stream_ld FOOTPRINT=64M PASSES=2 gem5-run
 make APP=frontend_test run
 make APP=frontend_test TEST=2fetch gem5-run
 make APP=cond_br_test run
+make APP=mem_dep run
 make cputest
 ```
 
