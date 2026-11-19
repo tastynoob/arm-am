@@ -1,4 +1,4 @@
-# minibench
+# basic
 
 Two small loops used as a quick core/memory smoke test:
 
@@ -10,5 +10,5 @@ When the implementation exposes a PMU, it reports `PMCCNTR_EL0` cycles,
 cycles fall back to `CNTVCT_EL0` and the instruction count is printed as 0.
 
 ```sh
-make APP=minibench run
+make APP=basic run
 ```

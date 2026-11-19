@@ -10,6 +10,6 @@ static void __attribute__((noinline)) test_raw_store_pair(void)
 
 int main(void)
 {
-    mem_dep_run("raw_store_pair", test_raw_store_pair);
+    mem_dep_run(test_raw_store_pair);
     return 0;
 }

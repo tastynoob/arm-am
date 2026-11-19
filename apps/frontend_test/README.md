@@ -27,10 +27,10 @@ fixed-width 4 B instructions, so there is no equivalent test.
   line.
 - `ittage`'s indirect call is a C call through a `volatile` function pointer,
   which lowers to `blr`; `tage5`/`ittage` use `cbnz` for the forced branch.
-- Each test uses `BENCH_RUN(name, expr)` from `am/include/bench.h`; it prints
-  `cycles`, `instret`, `ipc` and a `PASS` line.  These tests measure timing,
-  not architectural correctness, so `PASS` only means the image ran to
-  completion.  QEMU cycle counts are not meaningful; use gem5/RTL for timing.
+- Each test uses `BENCH_RUN(name, expr)` from `am/include/bench.h`; it emits
+  `BENCH_FORMAT test=frontend_test/<test> ipc=... cycles=... instret=...
+  status=PASS`.  These tests measure timing, not architectural correctness, so
+  `status=PASS` only means the image ran to completion.  QEMU cycle counts are not meaningful; use gem5/RTL for timing.
 
 ```sh
 make APP=frontend_test run

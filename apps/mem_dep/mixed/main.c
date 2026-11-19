@@ -37,6 +37,6 @@ static void __attribute__((noinline)) test_mixed(void)
 
 int main(void)
 {
-    mem_dep_run("mixed", test_mixed);
+    mem_dep_run(test_mixed);
     return 0;
 }

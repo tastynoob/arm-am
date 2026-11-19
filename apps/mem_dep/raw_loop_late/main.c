@@ -42,6 +42,6 @@ static void __attribute__((noinline)) test_raw_loop_late(void)
 int main(void)
 {
     mem_x = MEM_OLD;
-    mem_dep_run("raw_loop_late", test_raw_loop_late);
+    mem_dep_run(test_raw_loop_late);
     return 0;
 }

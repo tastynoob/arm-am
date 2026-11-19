@@ -113,6 +113,6 @@ int main(void)
 {
     bench_warm_buffer();
     bench_banner("mix_all_types");
-    bench_run("mix_all_types", all_types_bench, 48, 0);
+    bench_run(all_types_bench);
     return 0;
 }

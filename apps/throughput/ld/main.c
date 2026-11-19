@@ -49,6 +49,6 @@ int main(void)
 {
     bench_banner("ld");
     bench_warm_buffer();
-    bench_run("ld", ld_bench, 64, 512);
+    bench_run(ld_bench);
     return 0;
 }

@@ -14,6 +14,6 @@ static void __attribute__((noinline)) test_raw_loop_carry(void)
 int main(void)
 {
     mem_x = MEM_OLD;
-    mem_dep_run("raw_loop_carry", test_raw_loop_carry);
+    mem_dep_run(test_raw_loop_carry);
     return 0;
 }

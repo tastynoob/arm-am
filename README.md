@@ -8,7 +8,7 @@ AArch64 bare-metal AM runtime and small tests for QEMU `mini-virt`
 | App | What it does |
 | --- | --- |
 | `hello` | Prints a fixed hello message; smoke test for console output and exit |
-| `minibench` | Integer loop and small-buffer memory loop with cycle counts |
+| `basic` | Integer loop and small-buffer memory loop with cycle counts |
 | `packedtest` | Checks packed 32-bit register allocation with a 64-bit add |
 | `throughput` | Instruction-throughput test set (ALU, chained ALU, cmp+branch, scalar/pair L1 load/store); one `.bin` per test, shared build rules and README (`throughput/README.md`) |
 | `mix_width` | Mixed-instruction rename/dispatch throughput with independent interleaved ALU/FP/load/store/branch/mul bodies |
@@ -22,8 +22,9 @@ AArch64 bare-metal AM runtime and small tests for QEMU `mini-virt`
 | `cond_br_test` | Conditional-branch direction patterns |
 | `mem_dep` | Single-core RAW/WAR memory-dependence violation tests |
 
-An app is a test set.  Every test produces one `.bin`, and `TEST=<name>`
-selects a test in any set.  A one-test app such as `hello` is simply a test set
+An app is a test set.  Every test is one minibench and produces one `.bin`;
+`TEST=<name>` selects a test in any set.  `basic` is simply the app with the
+integer/memory smoke loops, not the name of the collection.  A one-test app such as `hello` is simply a test set
 with one test (named after the app); it follows exactly the same build rule as
 `throughput`.  All `.bin`s of a set are written directly into its build directory,
 e.g. `build/arm64-minivirt/throughput/alu.bin`.  Each test set has one
@@ -49,6 +50,39 @@ make APP=cond_br_test run
 make APP=mem_dep run
 make cputest
 ```
+
+
+## Machine-readable results
+
+Every performance test with a timed core loop emits one canonical line:
+
+```text
+BENCH_FORMAT test=<app>/<test> ipc=<x.xx> [field ...]
+```
+
+`test` and `ipc` are mandatory.  Everything after them is caller-defined,
+formatted with printf-style arguments.  When there are multiple results, use a
+semantic field rather than an index: `loop=integer`, `phase=pass0`,
+`phase=total`, `cache=L2 stride=64 footprint=2048`, etc.
+
+Throughput/bandwidth are not baked into the formatter.  Tests that need them
+either add explicit extra fields or print a separate human-readable log;
+bandwidth/latency lines remain friendly output, while scripts use
+`BENCH_FORMAT` for the normalized IPC result.  Correctness-only suites such as
+`cputest` do not emit it.
+
+Extract records from one or more logs (or stdin) with:
+
+```sh
+scripts/bench_extract.py build/gem5-data/throughput/alu/run.log
+scripts/bench_extract.py build/gem5-data/*/*/run.log -o results.tsv
+scripts/bench_extract.py build/gem5-data/*/*/run.log --json -o results.json
+```
+
+The TSV header is the union of `test`, `ipc` and all caller-defined fields;
+missing fields are left blank.  `test` and `ipc` are validated, and malformed
+records make the tool exit non-zero.  Values are whitespace-delimited
+`key=value` tokens, so field values cannot contain spaces.
 
 QEMU `mini-virt` accepts the raw `.bin` image produced by `make`, not the ELF.
 `make run` already passes the `.bin`.  The gem5 `--bare-metal` path in the

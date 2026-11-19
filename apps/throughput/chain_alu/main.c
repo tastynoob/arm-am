@@ -83,6 +83,6 @@ int main(void)
     bench_banner("chain_alu");
     printf("chains=%u adds/iteration=%u\n", (unsigned)CHAINS,
            (unsigned)(CHAINS * 8));
-    bench_run("chain_alu", chain_alu_bench, (uint64_t)CHAINS * 8U, 0);
+    bench_run(chain_alu_bench);
     return 0;
 }

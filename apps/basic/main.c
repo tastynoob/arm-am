@@ -1,4 +1,5 @@
 #include <am.h>
+#include <bench.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -30,33 +31,28 @@ static uint64_t memory_bench(uint64_t iterations)
     return checksum;
 }
 
-static void report(const char *name, uint64_t (*bench)(uint64_t),
-                   uint64_t iterations)
+static void report(uint64_t (*bench)(uint64_t), uint64_t iterations,
+                   const char *loop)
 {
     uint64_t cycle_start = am_read_cycles();
     uint64_t instret_start = am_read_instret();
     uint64_t result = bench(iterations);
     uint64_t cycles = am_read_cycles() - cycle_start;
     uint64_t instret = am_read_instret() - instret_start;
-    uint64_t ipc_x100 = cycles ? (instret * 100U) / cycles : 0U;
-
-    printf("%-8s iterations=%llu cycles=%llu instret=%llu ipc=%llu.%02llu "
-           "result=0x%016llx\n",
-           name, (unsigned long long)iterations,
-           (unsigned long long)cycles, (unsigned long long)instret,
-           (unsigned long long)(ipc_x100 / 100U),
-           (unsigned long long)(ipc_x100 % 100U),
-           (unsigned long long)result);
+    (void)result;
+    bench_format(cycles, instret,
+                 "loop=%s cycles=%llu instret=%llu status=PASS",
+                 loop, (unsigned long long)cycles,
+                 (unsigned long long)instret);
 }
 
 int main(void)
 {
-    puts("arm-am: mini-virt minibench");
+    puts("arm-am: basic");
     printf("PMU: cycle=%s instret=%s\n",
            am_pmu_available() ? "yes" : "no (CNTVCT fallback)",
            am_instret_available() ? "yes" : "no");
-    report("integer", integer_bench, 1000000);
-    report("memory", memory_bench, 1000000);
-    printf("minibench: PASS sink=0x%016llx\n", (unsigned long long)sink);
+    report(integer_bench, 1000000, "integer");
+    report(memory_bench, 1000000, "memory");
     return 0;
 }

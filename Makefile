@@ -1,5 +1,5 @@
 ARCH ?= arm64-minivirt
-APP ?= minibench
+APP ?= basic
 APP_NAME ?= $(notdir $(APP))
 APP_DIR ?= apps/$(APP)
 
@@ -63,7 +63,8 @@ LDFLAGS := -nostdlib -static -no-pie \
 	-Wl,-T,am/src/platform/mini-virt/linker.ld -Wl,--gc-sections \
 	-Wl,--build-id=none -Wl,--no-warn-rwx-segments
 
-CPPFLAGS := $(BASE_CPPFLAGS) -I$(APP_DIR) -I$(APP_DIR)/include $(APP_CPPFLAGS)
+CPPFLAGS := $(BASE_CPPFLAGS) -I$(APP_DIR) -I$(APP_DIR)/include \
+	-DBENCH_APP=\"$(APP)\" -DBENCH_TEST=\"$(APP_NAME)\" $(APP_CPPFLAGS)
 CFLAGS := $(BASE_CFLAGS) -std=gnu17 $(APP_CFLAGS)
 CXXFLAGS := $(BASE_CFLAGS) $(APP_CFLAGS) -std=c++17 -fno-exceptions -fno-rtti \
 	-fno-threadsafe-statics

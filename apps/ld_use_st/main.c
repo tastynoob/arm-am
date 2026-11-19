@@ -44,6 +44,6 @@ int main(void)
 {
     bench_banner("ld_use_st");
     printf("same-line chain: load -> add -> store -> load\n");
-    bench_run("ld_use_st", rmw_bench, 1, 0);
+    bench_run(rmw_bench);
     return 0;
 }

@@ -15,6 +15,7 @@
 #include <klib.h>
 #include <klib-macros.h>
 #include <stdint.h>
+#include <bench.h>
 
 #define BYTE (1)
 #define KB (1024 * BYTE)
@@ -104,6 +105,8 @@ void legacy_test_mem_bandwidth(const char *cache_name, uint64_t iter,
     uint64_t cycle_1;
     uint64_t cycle_2;
     uint64_t cycle;
+    uint64_t instret_1;
+    uint64_t instret_2;
 
     if (strcmp(cache_name, "MEM") != 0) {
         access_region_with_step_by_xtimes<Stride, 8>(
@@ -112,10 +115,12 @@ void legacy_test_mem_bandwidth(const char *cache_name, uint64_t iter,
         printf("MEM bandwidth test, skip warmup\n");
     }
 
+    instret_1 = am_read_instret();
     cycle_1 = am_read_cycles();
     access_region_with_step_by_xtimes<Stride, 8>(
         iter, _PERF_TEST_ADDR_BASE, footprint_cachelines * Stride);
     cycle_2 = am_read_cycles();
+    instret_2 = am_read_instret();
     cycle = cycle_2 - cycle_1;
 
     if (cycle == 0) {
@@ -128,6 +133,12 @@ void legacy_test_mem_bandwidth(const char *cache_name, uint64_t iter,
            cache_name, (float)iter * footprint_per_sample / (float)cycle,
            (unsigned long long)iter,
            (unsigned long long)footprint_cachelines, Stride);
+    bench_format(cycle, instret_2 - instret_1,
+                "cache=%s stride=%u footprint=%llu cycles=%llu instret=%llu",
+                cache_name, Stride,
+                (unsigned long long)footprint_cachelines,
+                (unsigned long long)cycle,
+                (unsigned long long)(instret_2 - instret_1));
 }
 
 int main(void)

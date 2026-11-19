@@ -42,6 +42,6 @@ static void __attribute__((noinline)) test_raw_train_flip(void)
 
 int main(void)
 {
-    mem_dep_run("raw_train_flip", test_raw_train_flip);
+    mem_dep_run(test_raw_train_flip);
     return 0;
 }

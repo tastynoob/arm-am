@@ -55,6 +55,6 @@ int main(void)
 {
     bench_banner("ldp");
     bench_warm_buffer();
-    bench_run("ldp", ldp_bench, 64, 1024);
+    bench_run(ldp_bench);
     return 0;
 }

@@ -47,6 +47,6 @@ alu_bench(uint64_t iters)
 int main(void)
 {
     bench_banner("alu");
-    bench_run("alu", alu_bench, 64, 0);
+    bench_run(alu_bench);
     return 0;
 }

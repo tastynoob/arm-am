@@ -59,6 +59,6 @@ cmp_branch_bench(uint64_t iters)
 int main(void)
 {
     bench_banner("cmpbr");
-    bench_run("cmpbr", cmp_branch_bench, 32, 0);
+    bench_run(cmp_branch_bench);
     return 0;
 }

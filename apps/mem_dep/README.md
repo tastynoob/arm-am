@@ -26,9 +26,10 @@ gem5 MDP counter, not a software PASS/FAIL:
 
 The relevant gem5 counters are under `system.cpu.MemDepUnit__0`:
 `conflictingLoads`, `mdpUnpredictedViolations`, `mdpPredictedViolations`,
-`phastViolationUpdates`, and `mdpFalseDepAtCommit`.  `done` only means the
-workload completed; the counters show whether the hazard was actually
-exercised.  There is intentionally no error-checking code in the tests.
+`phastViolationUpdates`, and `mdpFalseDepAtCommit`.  The canonical line uses
+`status=DONE`; it only means the workload completed, while the counters show
+whether the hazard was actually exercised.  There is intentionally no
+error-checking code in the tests.
 
 ```sh
 make APP=mem_dep run

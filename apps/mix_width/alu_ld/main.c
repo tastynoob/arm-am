@@ -109,6 +109,6 @@ int main(void)
 {
     bench_warm_buffer();
     bench_banner("mix_alu_ld");
-    bench_run("mix_alu_ld", alu_ld_bench, 64, 0);
+    bench_run(alu_ld_bench);
     return 0;
 }

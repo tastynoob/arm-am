@@ -11,6 +11,7 @@
 
 #include <klib.h>
 #include <klib-macros.h>
+#include <bench.h>
 
 #define BYTE (1)
 #define KB (1024 * BYTE)
@@ -120,9 +121,13 @@ int main(void)
                          0x40000000);
     flush_cache_efficient(footprint_kb, flush_start);
 
+    uint64_t instret_1 = am_read_instret();
     cache_iloop(&loads, &cycles);
-    printf("the test of load-add-load hit result\n");
-    printf("loads %llu cycles %llu\n", loads, cycles);
+    uint64_t instret = am_read_instret() - instret_1;
     printf("load-to-use latency: %llu cycles/load\n", cycles / loads);
+    bench_format(cycles, instret,
+                 "cycles=%llu instret=%llu status=PASS",
+                 (unsigned long long)cycles,
+                 (unsigned long long)instret);
     return 0;
 }

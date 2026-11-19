@@ -11,6 +11,6 @@ static void __attribute__((noinline)) test_war_same_line(void)
 
 int main(void)
 {
-    mem_dep_run("war_same_line", test_war_same_line);
+    mem_dep_run(test_war_same_line);
     return 0;
 }

@@ -110,6 +110,6 @@ static uint64_t __attribute__((noinline)) alu_fp_bench(uint64_t iters)
 int main(void)
 {
     bench_banner("mix_alu_fp");
-    bench_run("mix_alu_fp", alu_fp_bench, 64, 0);
+    bench_run(alu_fp_bench);
     return 0;
 }

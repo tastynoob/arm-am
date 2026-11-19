@@ -70,6 +70,6 @@ int main(void)
 {
     bench_banner("stp");
     bench_warm_buffer();
-    bench_run("stp", stp_bench, 64, 1024);
+    bench_run(stp_bench);
     return 0;
 }

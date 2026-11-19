@@ -97,6 +97,6 @@ int main(void)
 {
     bench_warm_buffer();
     bench_banner("mix_alu_fp_branch_ld_st");
-    bench_run("mix_alu_fp_branch_ld_st", alu_fp_branch_ld_st_bench, 40, 0);
+    bench_run(alu_fp_branch_ld_st_bench);
     return 0;
 }

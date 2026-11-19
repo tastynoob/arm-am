@@ -13,6 +13,14 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdarg.h>
+
+#ifndef BENCH_APP
+#define BENCH_APP "unknown"
+#endif
+#ifndef BENCH_TEST
+#define BENCH_TEST "unknown"
+#endif
 
 /*
  * Loop trip count.  Override from the command line with ITERS=<n>; suite.mk
@@ -127,40 +135,32 @@ static inline void bench_warm_buffer(void)
     bench_sink ^= checksum;
 }
 
-static inline void bench_report(const char *name, uint64_t cycles,
-                                uint64_t instret, uint64_t ops,
-                                uint64_t bytes)
+/*
+ * Canonical machine-readable result.  `test` and `ipc` are mandatory; the
+ * extra key=value fields are caller-defined.  This is the only line scripts
+ * need to parse; human-friendly bandwidth/latency output may remain separate.
+ */
+static inline void bench_format(uint64_t cycles, uint64_t instret,
+                                const char *fmt, ...)
 {
-    uint64_t ops_x100 = cycles ? (ops * 100ULL) / cycles : 0;
-    uint64_t cyc_x100 = ops ? (cycles * 100ULL) / ops : 0;
     uint64_t ipc_x100 = cycles ? (instret * 100ULL) / cycles : 0;
 
-    printf("%-6s cycles=%llu instret=%llu ops/cyc=%llu.%02llu "
-           "cyc/op=%llu.%02llu ipc=%llu.%02llu",
-           name, (unsigned long long)cycles, (unsigned long long)instret,
-           (unsigned long long)(ops_x100 / 100),
-           (unsigned long long)(ops_x100 % 100),
-           (unsigned long long)(cyc_x100 / 100),
-           (unsigned long long)(cyc_x100 % 100),
+    printf("BENCH_FORMAT test=%s/%s ipc=%llu.%02llu",
+           BENCH_APP, BENCH_TEST,
            (unsigned long long)(ipc_x100 / 100),
            (unsigned long long)(ipc_x100 % 100));
-    if (bytes) {
-        uint64_t b_x100 = cycles ? (bytes * 100ULL) / cycles : 0;
+    if (fmt && *fmt) {
+        va_list ap;
 
-        printf(" B/cyc=%llu.%02llu",
-               (unsigned long long)(b_x100 / 100),
-               (unsigned long long)(b_x100 % 100));
+        putchar(' ');
+        va_start(ap, fmt);
+        vprintf(fmt, ap);
+        va_end(ap);
     }
     putchar('\n');
 }
 
-/*
- * Time one benchmark call and print the result line.  "ops" and "bytes" are
- * per loop iteration and describe what the loop body actually executes, so
- * the reported IPC includes the loop-control overhead while ops/cyc does not.
- */
-static inline int bench_run(const char *name, bench_fn fn,
-                            uint64_t ops_per_iter, uint64_t bytes_per_iter)
+static inline int bench_run(bench_fn fn)
 {
     uint64_t cycle_start = am_read_cycles();
     uint64_t instret_start = am_read_instret();
@@ -169,18 +169,15 @@ static inline int bench_run(const char *name, bench_fn fn,
     uint64_t instret = am_read_instret() - instret_start;
 
     bench_sink ^= result;
-    bench_report(name, cycles, instret, ops_per_iter * BENCH_ITERS,
-                 bytes_per_iter * BENCH_ITERS);
-    printf("bench %s: PASS sink=0x%016llx\n", name,
-           (unsigned long long)bench_sink);
+    bench_format(cycles, instret,
+                 "cycles=%llu instret=%llu status=PASS",
+                 (unsigned long long)cycles, (unsigned long long)instret);
     return 0;
 }
 
-
 /*
- * Time an arbitrary test expression (usually one call into the test body) and
- * print cycles/instret/IPC plus a PASS line.  Frontend/branch tests have no
- * natural ops/bytes count, so they use this instead of bench_report().
+ * Time an arbitrary test expression and emit the canonical line.  The `name`
+ * is only used for the startup banner; the result line uses BENCH_APP/TEST.
  */
 #define BENCH_RUN(name, expr) do {                                      \
     bench_banner_plain(name);                                           \
@@ -189,14 +186,10 @@ static inline int bench_run(const char *name, bench_fn fn,
     expr;                                                               \
     uint64_t _bench_cyc = am_read_cycles() - _bench_cyc0;               \
     uint64_t _bench_ins = am_read_instret() - _bench_ins0;              \
-    uint64_t _bench_ipc = _bench_cyc                                    \
-        ? (_bench_ins * 100ULL) / _bench_cyc : 0;                       \
-    printf("%s cycles=%llu instret=%llu ipc=%llu.%02llu\n", name,       \
-           (unsigned long long)_bench_cyc,                              \
-           (unsigned long long)_bench_ins,                              \
-           (unsigned long long)(_bench_ipc / 100),                      \
-           (unsigned long long)(_bench_ipc % 100));                     \
-    printf("bench %s: PASS\n", name);                                   \
+    bench_format(_bench_cyc, _bench_ins,                                 \
+                 "cycles=%llu instret=%llu status=PASS",                    \
+                 (unsigned long long)_bench_cyc,                            \
+                 (unsigned long long)_bench_ins);                           \
 } while (0)
 
 #endif /* ARM_AM_BENCH_H */

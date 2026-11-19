@@ -83,21 +83,17 @@ static inline uint64_t mem_ld_st_line(uint64_t *p0, uint64_t *p1,
     return value;
 }
 
-static void mem_dep_run(const char *name, void (*workload)(void))
+static void mem_dep_run(void (*workload)(void))
 {
     uint64_t cycles0 = am_read_cycles();
     uint64_t instret0 = am_read_instret();
     workload();
     uint64_t cycles = am_read_cycles() - cycles0;
     uint64_t instret = am_read_instret() - instret0;
-    uint64_t ipc = cycles ? (instret * 100ULL) / cycles : 0;
-
-    printf("%s cycles=%llu instret=%llu ipc=%llu.%02llu\n",
-           name, (unsigned long long)cycles,
-           (unsigned long long)instret,
-           (unsigned long long)(ipc / 100),
-           (unsigned long long)(ipc % 100));
-    printf("bench %s: done\n", name);
+    bench_format(cycles, instret,
+                 "cycles=%llu instret=%llu status=DONE",
+                 (unsigned long long)cycles,
+                 (unsigned long long)instret);
 }
 
 #endif

@@ -139,18 +139,32 @@ int main(void)
         bench_sink ^= result;
         total_cycles += cycles;
         total_instret += instret;
-        printf("pass %u ", (unsigned)pass);
-        bench_report("chain", cycles, instret, nodes, bytes);
+        uint64_t b_x100 = cycles ? (bytes * 100ULL) / cycles : 0;
+
+        printf("chain pass %u: bytes=%llu B/cyc=%llu.%02llu\n",
+               (unsigned)pass, (unsigned long long)bytes,
+               (unsigned long long)(b_x100 / 100),
+               (unsigned long long)(b_x100 % 100));
+        bench_format(cycles, instret,
+                     "phase=pass%u cycles=%llu instret=%llu status=PASS",
+                     (unsigned)pass, (unsigned long long)cycles,
+                     (unsigned long long)instret);
     }
 
     if (PASSES > 1) {
-        printf("total   ");
-        bench_report("chain", total_cycles, total_instret,
-                     (uint64_t)nodes * (uint64_t)PASSES,
-                     bytes * (uint64_t)PASSES);
+        uint64_t total_bytes = bytes * (uint64_t)PASSES;
+        uint64_t b_x100 = total_cycles
+            ? (total_bytes * 100ULL) / total_cycles : 0;
+
+        printf("chain total: bytes=%llu B/cyc=%llu.%02llu\n",
+               (unsigned long long)total_bytes,
+               (unsigned long long)(b_x100 / 100),
+               (unsigned long long)(b_x100 % 100));
+        bench_format(total_cycles, total_instret,
+                     "phase=total cycles=%llu instret=%llu status=PASS",
+                     (unsigned long long)total_cycles,
+                     (unsigned long long)total_instret);
     }
 
-    printf("bench chain_ld: PASS sink=0x%016llx\n",
-           (unsigned long long)bench_sink);
     return 0;
 }

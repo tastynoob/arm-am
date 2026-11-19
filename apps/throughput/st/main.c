@@ -58,6 +58,6 @@ int main(void)
 {
     bench_banner("st");
     bench_warm_buffer();
-    bench_run("st", st_bench, 64, 512);
+    bench_run(st_bench);
     return 0;
 }

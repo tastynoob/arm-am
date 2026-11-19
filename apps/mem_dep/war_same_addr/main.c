@@ -10,6 +10,6 @@ static void __attribute__((noinline)) test_war_same_addr(void)
 
 int main(void)
 {
-    mem_dep_run("war_same_addr", test_war_same_addr);
+    mem_dep_run(test_war_same_addr);
     return 0;
 }
