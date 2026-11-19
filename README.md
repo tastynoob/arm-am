@@ -11,6 +11,7 @@ AArch64 bare-metal AM runtime and small tests for QEMU `mini-virt`
 | `minibench` | Integer loop and small-buffer memory loop with cycle counts |
 | `packedtest` | Checks packed 32-bit register allocation with a 64-bit add |
 | `throughput` | Instruction-throughput test set (ALU, chained ALU, cmp+branch, scalar/pair L1 load/store); one `.bin` per test, shared build rules and README (`throughput/README.md`) |
+| `mix_width` | Mixed-instruction rename/dispatch throughput with independent interleaved ALU/FP/load/store/branch/mul bodies |
 | `stream_ld` | Streaming load bandwidth over a configurable footprint and pass count |
 | `chain_ld` | Pointer-chasing memory latency over a configurable footprint |
 | `ld_use_st` | Same-line load-use-store RMW chain |
@@ -39,6 +40,7 @@ make APP=mem_test_latency run
 make APP=mem_test_bw TEST_TYPE=mem run
 make APP=throughput run      # all instruction-throughput tests
 make APP=throughput TEST=alu run   # one throughput test
+make APP=mix_width run
 make APP=stream_ld FOOTPRINT=64M PASSES=2 run
 make APP=stream_ld FOOTPRINT=64M PASSES=2 gem5-run
 make APP=frontend_test run
