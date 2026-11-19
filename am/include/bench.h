@@ -176,4 +176,27 @@ static inline int bench_run(const char *name, bench_fn fn,
     return 0;
 }
 
+
+/*
+ * Time an arbitrary test expression (usually one call into the test body) and
+ * print cycles/instret/IPC plus a PASS line.  Frontend/branch tests have no
+ * natural ops/bytes count, so they use this instead of bench_report().
+ */
+#define BENCH_RUN(name, expr) do {                                      \
+    bench_banner_plain(name);                                           \
+    uint64_t _bench_cyc0 = am_read_cycles();                            \
+    uint64_t _bench_ins0 = am_read_instret();                           \
+    expr;                                                               \
+    uint64_t _bench_cyc = am_read_cycles() - _bench_cyc0;               \
+    uint64_t _bench_ins = am_read_instret() - _bench_ins0;              \
+    uint64_t _bench_ipc = _bench_cyc                                    \
+        ? (_bench_ins * 100ULL) / _bench_cyc : 0;                       \
+    printf("%s cycles=%llu instret=%llu ipc=%llu.%02llu\n", name,       \
+           (unsigned long long)_bench_cyc,                              \
+           (unsigned long long)_bench_ins,                              \
+           (unsigned long long)(_bench_ipc / 100),                      \
+           (unsigned long long)(_bench_ipc % 100));                     \
+    printf("bench %s: PASS\n", name);                                   \
+} while (0)
+
 #endif /* ARM_AM_BENCH_H */

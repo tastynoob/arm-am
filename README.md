@@ -16,6 +16,9 @@ AArch64 bare-metal AM runtime and small tests for QEMU `mini-virt`
 | `ld_use_st` | Same-line load-use-store RMW chain |
 | `mem_test_latency` | Pointer-chasing memory latency test with cache-flush footprint |
 | `mem_test_bw` | Strided/unrolled memory bandwidth test (`mem` or `cache`) |
+| `frontend_test` | Frontend fetch/branch/history/RAS/width tests ported from OpenXiangShan nexus-am `tests/frontendtest` |
+| `br_target_test` | Call, indirect, jump and return branch-target tests |
+| `cond_br_test` | Conditional-branch direction patterns |
 
 An app is a test set.  Every test produces one `.bin`, and `TEST=<name>`
 selects a test in any set.  A one-test app such as `hello` is simply a test set
@@ -37,6 +40,9 @@ make APP=throughput run      # all instruction-throughput tests
 make APP=throughput TEST=alu run   # one throughput test
 make APP=stream_ld FOOTPRINT=64M PASSES=2 run
 make APP=stream_ld FOOTPRINT=64M PASSES=2 gem5-run
+make APP=frontend_test run
+make APP=frontend_test TEST=2fetch gem5-run
+make APP=cond_br_test run
 make cputest
 ```
 
@@ -44,3 +50,7 @@ QEMU `mini-virt` accepts the raw `.bin` image produced by `make`, not the ELF.
 `make run` already passes the `.bin`.  The gem5 `--bare-metal` path in the
 current KMHv3 tree also consumes the raw `.bin` (`--generic-arm-cpt
 --raw-cpt`); `make APP=... gem5-run` handles that.
+
+When adding a test, run it on gem5 as well:
+`make APP=<app> TEST=<test> gem5-run`.  QEMU is for functional smoke tests;
+its cycle counts are not meaningful for microarchitecture measurements.
