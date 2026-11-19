@@ -21,7 +21,9 @@ An app is a test set.  Every test produces one `.bin`, and `TEST=<name>`
 selects a test in any set.  A one-test app such as `hello` is simply a test set
 with one test (named after the app); it follows exactly the same build rule as
 `throughput`.  All `.bin`s of a set are written directly into its build directory,
-e.g. `build/arm64-minivirt/throughput/alu.bin`.  Each test set has one `README.md`.
+e.g. `build/arm64-minivirt/throughput/alu.bin`.  Each test set has one
+`README.md`; its test list, source layout and parameters live in
+`apps/<app>/app.mk`.
 
 ## Build and run
 

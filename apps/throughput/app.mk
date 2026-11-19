@@ -1,3 +1,7 @@
+# Test list and source layout for this app.
+TESTS := alu chain_alu cmpbr ld st ldp stp
+TEST_SRC = $(APP_DIR)/$(1)/main.c
+
 # Shared build rules for every apps/throughput/<name> minibench.
 #
 # The category owns the compilation parameters; the individual sub-minibench

@@ -33,37 +33,18 @@ CXX := $(CROSS_COMPILE)g++
 OBJCOPY := $(CROSS_COMPILE)objcopy
 OBJDUMP := $(CROSS_COMPILE)objdump
 
-# Per-app build rules.  For a multi-test app/test set this is the shared mk
-# used by every test in the set.
+# Everything app-specific lives in apps/<app>/app.mk: the test list, the
+# source location for each test, and the app's compile-time parameters.  The
+# root only provides the common compiler setup and the generic build/run
+# loops over TESTS.
 -include $(APP_DIR)/app.mk
 
-# An app is a test set.  Every set has one or more tests and every test
-# produces one .bin in the set's build directory.  A one-test set keeps its
-# only test at apps/<app>/main.c; a multi-test set uses
-# apps/<app>/<test>/main.c.  The shared app.mk/README and TEST selection are
-# the same in both cases.  The recursive one-test build (APP_SOURCE set) is
-# the only internal mode.
-TEST_BUILD := $(if $(strip $(APP_SOURCE)),1,)
-
-ifeq ($(TEST_BUILD),)
-APP_SUBTESTS := $(patsubst $(APP_DIR)/%/main.c,%,$(wildcard $(APP_DIR)/*/main.c))
-APP_TESTS := $(if $(APP_SUBTESTS),$(APP_SUBTESTS),$(if $(wildcard $(APP_DIR)/main.c $(APP_DIR)/main.cpp),$(APP_NAME),))
-ifeq ($(strip $(APP_TESTS)),)
-$(error No tests found: expected $(APP_DIR)/main.c, $(APP_DIR)/main.cpp, or $(APP_DIR)/<test>/main.c)
-endif
-SINGLE_TEST := $(if $(APP_SUBTESTS),,1)
+# TEST selects one of the app's tests; this is the only common selection rule.
 ifneq ($(strip $(TEST)),)
-ifeq ($(filter $(TEST),$(APP_TESTS)),)
-$(error unknown test '$(TEST)' in $(APP); available: $(APP_TESTS))
+ifeq ($(filter $(TEST),$(TESTS)),)
+$(error unknown test '$(TEST)' in $(APP); available: $(TESTS))
 endif
 TESTS := $(TEST)
-else
-TESTS := $(APP_TESTS)
-endif
-else
-ifeq ($(strip $(APP_SOURCE)),)
-$(error No source found for test build)
-endif
 endif
 
 COMMON_BUILD ?= build/$(ARCH)/common
@@ -102,60 +83,65 @@ APP_STAMP := $(BUILD_DIR)/.$(APP_NAME).build-config
 
 APP_NAMES := $(notdir $(patsubst %/,%,$(wildcard apps/*/)))
 
-.PHONY: all build run gem5-run clean list help cputest cputest-build \
-	cputest-gem5 FORCE
+.PHONY: all build run gem5-run test-build test-run test-gem5-run check-tests \
+	clean list help cputest cputest-build cputest-gem5 FORCE
 
-ifeq ($(TEST_BUILD),)
-# Test-set mode: one recursive build/run per small test, all sharing app.mk.
-all:
+.DEFAULT_GOAL := all
+
+check-tests:
+	@if [ -z "$(strip $(TESTS))" ]; then \
+		echo "$(APP_DIR)/app.mk must define TESTS" >&2; \
+		exit 1; \
+	fi
+
+# Build every test of this app; each test is one recursive one-bin build into
+# the app build directory, so bin files are build/<app>/<test>.bin.
+all: check-tests
 	@set -e; for test in $(TESTS); do \
 		printf '\n== %s/%s ==\n' '$(APP)' "$$test"; \
-		$(MAKE) --no-print-directory ARCH=$(ARCH) \
+		$(MAKE) --no-print-directory \
 			APP=$(APP) APP_NAME=$$test \
-			APP_SOURCE=$(if $(SINGLE_TEST),$(firstword $(wildcard $(APP_DIR)/main.c $(APP_DIR)/main.cpp)),$(APP_DIR)/$$test/main.c) \
+			APP_SOURCE=$(call TEST_SRC,$$test) \
 			BUILD_DIR=$(BUILD_DIR) \
-			build; \
+			test-build; \
 	done
-else
-all: $(BIN)
-endif
 
 build: all
 
-ifeq ($(TEST_BUILD),)
-run:
+run: check-tests
 	@set -e; for test in $(TESTS); do \
 		printf '\n== %s/%s ==\n' '$(APP)' "$$test"; \
-		$(MAKE) --no-print-directory ARCH=$(ARCH) \
+		$(MAKE) --no-print-directory \
 			APP=$(APP) APP_NAME=$$test \
-			APP_SOURCE=$(if $(SINGLE_TEST),$(firstword $(wildcard $(APP_DIR)/main.c $(APP_DIR)/main.cpp)),$(APP_DIR)/$$test/main.c) \
+			APP_SOURCE=$(call TEST_SRC,$$test) \
 			BUILD_DIR=$(BUILD_DIR) \
-			run; \
+			test-run; \
 	done
-else
-run: $(BIN)
+
+gem5-run: check-tests
+	@set -e; for test in $(TESTS); do \
+		printf '\n== %s/%s ==\n' '$(APP)' "$$test"; \
+		$(MAKE) --no-print-directory \
+			APP=$(APP) APP_NAME=$$test \
+			APP_SOURCE=$(call TEST_SRC,$$test) \
+			BUILD_DIR=$(BUILD_DIR) \
+			test-gem5-run; \
+	done
+
+# Internal one-test targets: APP_NAME/APP_SOURCE/BUILD_DIR are supplied by
+# the loops above.  They are also what non-app suites (cputest) reuse.
+test-build: $(BIN)
+
+test-run: $(BIN)
 	$(QEMU) -M mini-virt,platform=bm -cpu $(CPU) -smp 1 -m $(MEMORY) \
 		-nographic -monitor none -kernel $(BIN)
-endif
 
-ifeq ($(TEST_BUILD),)
-gem5-run:
-	@set -e; for test in $(TESTS); do \
-		printf '\n== %s/%s ==\n' '$(APP)' "$$test"; \
-		$(MAKE) --no-print-directory ARCH=$(ARCH) \
-			APP=$(APP) APP_NAME=$$test \
-			APP_SOURCE=$(if $(SINGLE_TEST),$(firstword $(wildcard $(APP_DIR)/main.c $(APP_DIR)/main.cpp)),$(APP_DIR)/$$test/main.c) \
-			BUILD_DIR=$(BUILD_DIR) \
-			gem5-run; \
-	done
-else
 # gem5 --bare-metal: RAM 0x40000000, SimpleUart 0x13000000, HLT #0.
 # The bare-metal interface loads the flat .bin image, not the ELF.
-gem5-run: $(BIN)
+test-gem5-run: $(BIN)
 	cd $(GEM5_HOME) && $(GEM5) -d $(abspath $(GEM5_OUTDIR)) \
 		$(GEM5_CONFIG) --raw-cpt --bare-metal \
 		--generic-arm-cpt $(abspath $(BIN)) $(GEM5_DIFFTEST) $(GEM5_ARGS)
-endif
 
 list:
 	@printf 'apps:   %s\n' '$(APP_NAMES)'
@@ -163,12 +149,13 @@ list:
 
 help:
 	@printf '%s\n' \
-		'make APP=<app> build       build all tests in one app/test set' \
-		'make APP=<app> TEST=<t>    build only one test of a test set' \
-		'make APP=<app> run         build and run the app/test set under QEMU' \
-		'make APP=<app> gem5-run    run the app/test set on gem5 (--bare-metal)' \
-		'make APP=throughput run    all instruction-throughput tests' \
-		'make APP=throughput TEST=alu run   one throughput test' \
+		'make APP=<app> build       build every test in an app' \
+		'make APP=<app> TEST=<t>    build only one test' \
+		'make APP=<app> run         build and run every test under QEMU' \
+		'make APP=<app> TEST=<t> run' \
+		'make APP=<app> gem5-run    run the raw .bin on gem5 (--bare-metal)' \
+		'make APP=throughput run          all throughput tests' \
+		'make APP=throughput TEST=alu run one throughput test' \
 		'make APP=stream_ld FOOTPRINT=64M PASSES=2 run' \
 		'make cputest               build and run tests/cputest on QEMU' \
 		'make cputest-build         build tests/cputest only' \
@@ -177,7 +164,7 @@ help:
 		'make APP=mem_test_bw TEST_TYPE=cache run' \
 		'make clean                 remove build/' \
 		'' \
-		'Overridable: ARCH APP TEST QEMU CPU MEMORY UART_BASE GEM5_HOME GEM5 GEM5_CONFIG GEM5_OUTDIR DIFFTEST_REF_SO GEM5_ARGS ITERS FOOTPRINT PASSES CHAINS FLUSH TOOLCHAIN_DIR CROSS_COMPILE'
+		'Overridable: ARCH APP TEST QEMU CPU MEMORY UART_BASE GEM5_HOME GEM5 GEM5_CONFIG GEM5_OUTDIR DIFFTEST_REF_SO GEM5_ARGS TOOLCHAIN_DIR CROSS_COMPILE'
 
 $(COMMON_BUILD) $(BUILD_DIR):
 	@mkdir -p $@

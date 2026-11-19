@@ -29,7 +29,7 @@ $(TESTS): %:
 		APP_DIR=tests/cputest \
 		APP_SOURCE=tests/cputest/tests/$*.c \
 		BUILD_DIR=$(BUILD_ROOT)/$* \
-		build
+		test-build
 
 run: all
 	@$(ROOT)/tests/cputest/run.sh \
