@@ -14,12 +14,14 @@ own `.bin`.  `TEST=<name>` selects one test.
 | `st` | 64 scalar `str` over 512 B; L1 store throughput. |
 | `ldp` | 64 `ldp` over 1 KiB; pair-load throughput. |
 | `stp` | 64 `stp` over 1 KiB; pair-store throughput. |
+| `ldst` | 8 scalar `ldr` + 8 scalar `str` per iteration; mixed L1 load/store throughput. |
+| `ldpstp` | 8 `ldp` + 8 `stp` per iteration; mixed pair load/store throughput. |
 
 Common parameters from `app.mk`: `ITERS` (default 100000), and `CHAINS`
 (`chain_alu` only, default 4).
 
 ```sh
-make APP=throughput run                   # all seven tests
+make APP=throughput run                   # all nine tests
 make APP=throughput TEST=alu run          # one test
 make APP=throughput TEST=chain_alu CHAINS=1 run
 make APP=throughput TEST=chain_alu gem5-run
