@@ -1,6 +1,6 @@
 #include <bench.h>
 
-static void __attribute__((noinline)) tage4(unsigned long n)
+static void __attribute__((noinline, noipa)) tage4(unsigned long n)
 {
     register unsigned long i;
     for (i = 0; i < n; i++) {
@@ -12,6 +12,7 @@ static void __attribute__((noinline)) tage4(unsigned long n)
 
 int main(void)
 {
+    tage4(1);
     BENCH_RUN("tage4", tage4(1000));
     return 0;
 }

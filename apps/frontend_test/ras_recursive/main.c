@@ -18,6 +18,7 @@ static int recursive_test(int depth)
 
 int main(void)
 {
+    recursive_test(1);
     BENCH_RUN("ras_recursive", recursive_test(12));
     return 0;
 }

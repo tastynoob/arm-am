@@ -24,6 +24,7 @@ static void __attribute__((noinline)) test_2fetch(int cnt)
 
 int main(void)
 {
+    test_2fetch(1);
     BENCH_RUN("2fetch", test_2fetch(10000));
     return 0;
 }

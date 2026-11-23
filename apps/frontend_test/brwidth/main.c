@@ -22,6 +22,7 @@ static void __attribute__((noinline)) brwidth(int cnt)
 
 int main(void)
 {
+    brwidth(1);
     BENCH_RUN("brwidth", brwidth(100));
     return 0;
 }

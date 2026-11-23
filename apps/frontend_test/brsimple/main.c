@@ -18,6 +18,7 @@ static void __attribute__((noinline)) branch_test(int cnt)
 
 int main(void)
 {
+    branch_test(1);
     BENCH_RUN("brsimple", branch_test(100));
     return 0;
 }

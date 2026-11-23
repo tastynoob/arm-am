@@ -32,6 +32,7 @@ static void __attribute__((noinline)) branch_test(int cnt)
 
 int main(void)
 {
+    branch_test(1);
     BENCH_RUN("tage2", branch_test(1000));
     return 0;
 }

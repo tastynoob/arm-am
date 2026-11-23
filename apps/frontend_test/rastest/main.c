@@ -27,6 +27,7 @@ static void __attribute__((noinline)) ras_test(int cnt)
 
 int main(void)
 {
+    ras_test(1);
     BENCH_RUN("rastest", ras_test(100));
     return 0;
 }

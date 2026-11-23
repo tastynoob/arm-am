@@ -41,6 +41,7 @@ static void __attribute__((noinline)) branch_test2(int cnt)
 
 int main(void)
 {
+    branch_test2(1);
     BENCH_RUN("brnum2_uftb", branch_test2(1000));
     return 0;
 }
