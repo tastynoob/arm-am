@@ -116,6 +116,7 @@ void legacy_test_mem_bandwidth(const char *cache_name, uint64_t iter,
         printf("MEM bandwidth test, skip warmup\n");
     }
 
+    bench_fence();
     instret_1 = am_read_instret();
     cycle_1 = am_read_cycles();
     access_region_with_step_by_xtimes<Stride, 8>(

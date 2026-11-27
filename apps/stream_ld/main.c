@@ -132,6 +132,7 @@ int main(void)
            (unsigned long long)flush_bytes);
 
     for (uint32_t pass = 0; pass < (uint32_t)PASSES; pass++) {
+        bench_fence();
         uint64_t cycle_start = am_read_cycles();
         uint64_t instret_start = am_read_instret();
         uint64_t result = stream_load_pass(base, chunks);

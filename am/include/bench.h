@@ -39,6 +39,12 @@ static uint64_t bench_buffer[BENCH_BUFFER_U64]
     __attribute__((aligned(64), unused));
 static volatile uint64_t bench_sink __attribute__((unused));
 
+/* Drain prior UART/MMIO stores before starting a timed region. */
+static inline void bench_fence(void)
+{
+    __asm__ volatile("dsb sy" ::: "memory");
+}
+
 static inline void bench_pmu_banner(void)
 {
     printf("PMU: cycle=%s instret=%s\n",
@@ -51,6 +57,7 @@ static inline void bench_banner(const char *name)
     printf("arm-am: bench %s (iters=%llu)\n", name,
            (unsigned long long)BENCH_ITERS);
     bench_pmu_banner();
+    bench_fence();
 }
 
 /* Banner for tests whose trip count is not BENCH_ITERS (streaming passes). */
@@ -58,6 +65,7 @@ static inline void bench_banner_plain(const char *name)
 {
     printf("arm-am: bench %s\n", name);
     bench_pmu_banner();
+    bench_fence();
 }
 
 /* Parse "64M", "1G", "512K" or a plain byte count. */
@@ -140,6 +148,7 @@ static inline void bench_format(uint64_t cycles, uint64_t instret,
 
 static inline int bench_run(bench_fn fn)
 {
+    bench_fence();
     uint64_t cycle_start = am_read_cycles();
     uint64_t instret_start = am_read_instret();
     uint64_t result = fn(BENCH_ITERS);

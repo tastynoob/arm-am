@@ -127,6 +127,7 @@ int main(void)
                          NODE_REGION_SIZE);
     flush_cache_efficient(footprint_kb, flush_start);
 
+    bench_fence();
     uint64_t instret_1 = am_read_instret();
     cache_iloop(&loads, &cycles);
     uint64_t instret = am_read_instret() - instret_1;

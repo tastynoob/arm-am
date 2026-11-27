@@ -52,6 +52,7 @@ int main(void)
     printf("PMU: cycle=%s instret=%s\n",
            am_pmu_available() ? "yes" : "no (CNTVCT fallback)",
            am_instret_available() ? "yes" : "no");
+    bench_fence();
     report(integer_bench, 1000000, "integer");
     report(memory_bench, 1000000, "memory");
     return 0;
