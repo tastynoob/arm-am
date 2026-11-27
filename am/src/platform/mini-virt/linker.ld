@@ -2,7 +2,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    RAM (rwx) : ORIGIN = 0x40000000, LENGTH = 0x1ffe00000
+    RAM (rwx) : ORIGIN = 0x80000000, LENGTH = 0x80000000
 }
 
 SECTIONS
@@ -64,16 +64,23 @@ SECTIONS
     . = ALIGN(16);
     __image_end = .;
     __heap_start = .;
-    /* Validation-only file export window, read by QEMU/GDB after main. */
-    __spec_export_start = 0x23b000000;
-    __spec_export_end = 0x23f000000;
+    __heap_size = 0x01000000;       /* 16 MiB runtime heap */
+    __heap_end = __heap_start + __heap_size;
+
+    /* Dedicated arena for statically allocated benchmark working sets. */
+    __test_start = ALIGN(__heap_end, 64);
+    .test __test_start (NOLOAD) : {
+        KEEP(*(.test .test.*))
+        . = ALIGN(64);
+    } > RAM
+    __test_end = .;
+
     __stack_top = ORIGIN(RAM) + LENGTH(RAM);
     __stack_bottom = __stack_top - 0x100000;
-    __heap_end = __spec_export_start;
 
     /DISCARD/ : { *(.comment .note .note.*) }
 }
 
-ASSERT(__image_end <= __heap_end, "AArch64 bare-metal image overlaps stack")
-ASSERT(__spec_export_end <= __stack_bottom,
-       "SPEC export window overlaps stack")
+ASSERT(__image_end <= __heap_end, "AArch64 bare-metal image overlaps heap")
+ASSERT(__heap_end <= __test_start, "AArch64 bare-metal heap overlaps test arena")
+ASSERT(__test_end <= __stack_bottom, "AArch64 bare-metal test arena overlaps stack")

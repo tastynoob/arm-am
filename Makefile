@@ -11,7 +11,7 @@ TOOLCHAIN_DIR ?= $(wildcard $(HOME)/tools/arm-gnu-toolchain-13.2.Rel1)
 CROSS_COMPILE ?= $(if $(TOOLCHAIN_DIR),$(TOOLCHAIN_DIR)/bin/,)aarch64-none-elf-
 QEMU ?= qemu-system-aarch64
 CPU ?= neoverse-n2
-MEMORY ?= 8G
+MEMORY ?= 2G
 UART_BASE ?= 0x13000000
 
 # The gem5 tree must contain the --bare-metal QEMU-aligned platform change
@@ -137,7 +137,8 @@ test-run: $(BIN)
 	$(QEMU) -M mini-virt,platform=bm -cpu $(CPU) -smp 1 -m $(MEMORY) \
 		-nographic -monitor none -kernel $(BIN)
 
-# gem5 --bare-metal: RAM 0x40000000, SimpleUart 0x13000000, HLT #0.
+# gem5 --bare-metal: image entry 0x80000000; RAM size is independent.
+# SimpleUart is at 0x13000000; EOT (0x4) exits, HLT #0 is fallback.
 # The bare-metal interface loads the flat .bin image, not the ELF.
 test-gem5-run: $(BIN)
 	cd $(GEM5_HOME) && $(GEM5) -d $(abspath $(GEM5_OUTDIR)) \

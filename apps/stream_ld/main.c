@@ -33,6 +33,14 @@
 #error PASSES must be >= 1
 #endif
 
+#define TEST_AREA_SIZE (1024ULL * 1024ULL * 1024ULL)
+#define FLUSH_AREA_SIZE (64ULL * 1024ULL * 1024ULL)
+
+static uint8_t test_area[TEST_AREA_SIZE]
+    __attribute__((section(".test"), aligned(64)));
+static uint8_t flush_area[FLUSH_AREA_SIZE]
+    __attribute__((section(".test"), aligned(64)));
+
 #define LINE_BYTES 64U
 #define LINES_PER_ITER 16U
 #define ITER_BYTES (LINE_BYTES * LINES_PER_ITER)
@@ -98,19 +106,21 @@ int main(void)
         return 1;
     }
 
-    base = (uint64_t)bench_alloc(bytes);
-    if (base == 0) {
-        printf("stream_ld: cannot allocate %llu byte footprint\n",
-               (unsigned long long)bytes);
+    if (bytes > sizeof(test_area)) {
+        printf("stream_ld: footprint %llu exceeds test area %llu\n",
+               (unsigned long long)bytes,
+               (unsigned long long)sizeof(test_area));
         return 1;
     }
+    if (flush_bytes > sizeof(flush_area)) {
+        printf("stream_ld: flush %llu exceeds test area %llu\n",
+               (unsigned long long)flush_bytes,
+               (unsigned long long)sizeof(flush_area));
+        return 1;
+    }
+    base = (uint64_t)(uintptr_t)test_area;
     if (flush_bytes != 0) {
-        flush = (uint64_t)bench_alloc(flush_bytes);
-        if (flush == 0) {
-            printf("stream_ld: cannot allocate %llu byte flush buffer\n",
-                   (unsigned long long)flush_bytes);
-            return 1;
-        }
+        flush = (uint64_t)(uintptr_t)flush_area;
         bench_flush_cache(flush, flush_bytes);
     }
 

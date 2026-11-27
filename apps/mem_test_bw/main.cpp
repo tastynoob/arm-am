@@ -22,11 +22,6 @@
 #define MB (1024 * KB)
 #define GB (1024 * MB)
 
-#ifndef _PERF_TEST_ADDR_BASE
-#define _PERF_TEST_ADDR_BASE 0x80400000ULL
-#define _PERF_TEST_ADDR_BASE1 0x80100000ULL
-#endif
-
 #define _PERF_CACHELINE_SIZE_BYTE (64 * BYTE)
 #define _PERF_STRIDE_AVOID_BC (8 * BYTE)
 #define _PERF_STRIDE_AVOID_BC_NEWLINE \
@@ -37,7 +32,8 @@
 #define _PERF_L1_SIZE_AVOID_BC_BYTE (512 * _PERF_STRIDE_AVOID_BC_NEWLINE)
 #define _PERF_L2_SIZE_BYTE (1 * MB)
 #define _PERF_L3_SIZE_BYTE (6 * MB)
-#define _PERF_MEM_SIZE_BYTE (1024 * MB)
+#define _PERF_REGION_SIZE (4 * MB)
+
 #define _PERF_L1_NUM_WAYS 4
 #define _PERF_L1_NUM_SETS 256
 #define _PERF_L2_NUM_WAYS 8
@@ -53,7 +49,12 @@
     (_PERF_L2_NUM_SLICES * _PERF_L2_NUM_SETS * _PERF_CACHELINE_SIZE_BYTE)
 #define _PERF_ADDR_STRIDE_NEXT_PAGE (_PERF_PAGE_SIZE_BYTE)
 
-#define _PERF_BLACKHOLE _PERF_TEST_ADDR_BASE
+static uint8_t perf_area[_PERF_REGION_SIZE]
+    __attribute__((section(".test"), aligned(64)));
+static uint8_t perf_warm_area[_PERF_REGION_SIZE]
+    __attribute__((section(".test"), aligned(64)));
+static uint64_t perf_base;
+static uint64_t perf_warm_base;
 
 template <unsigned int Stride, unsigned int N>
 static inline void accessNElements(uint64_t addr)
@@ -110,7 +111,7 @@ void legacy_test_mem_bandwidth(const char *cache_name, uint64_t iter,
 
     if (strcmp(cache_name, "MEM") != 0) {
         access_region_with_step_by_xtimes<Stride, 8>(
-            iter, _PERF_TEST_ADDR_BASE1, footprint_cachelines * Stride);
+            iter, perf_warm_base, footprint_cachelines * Stride);
     } else {
         printf("MEM bandwidth test, skip warmup\n");
     }
@@ -118,7 +119,7 @@ void legacy_test_mem_bandwidth(const char *cache_name, uint64_t iter,
     instret_1 = am_read_instret();
     cycle_1 = am_read_cycles();
     access_region_with_step_by_xtimes<Stride, 8>(
-        iter, _PERF_TEST_ADDR_BASE, footprint_cachelines * Stride);
+        iter, perf_base, footprint_cachelines * Stride);
     cycle_2 = am_read_cycles();
     instret_2 = am_read_instret();
     cycle = cycle_2 - cycle_1;
@@ -143,6 +144,9 @@ void legacy_test_mem_bandwidth(const char *cache_name, uint64_t iter,
 
 int main(void)
 {
+    perf_base = (uint64_t)(uintptr_t)perf_area;
+    perf_warm_base = (uint64_t)(uintptr_t)perf_warm_area;
+
 #ifdef TEST_TYPE
     if (strcmp(TOSTRING(TEST_TYPE), "mem") == 0) {
         printf("start DDR bandwidth test\n");

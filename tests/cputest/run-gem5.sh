@@ -3,9 +3,10 @@
 # Run every cputest ELF under gem5 with the patched --bare-metal path.
 #
 # The gem5 config's --bare-metal mode builds the QEMU-aligned platform:
-# RAM 0x40000000, SimpleUart 0x13000000 (stdout), and the HLT #0 simtrap.
+# RAM starts at 0x80000000, image entry 0x80000000, SimpleUart
+# 0x13000000 (stdout); UART EOT (0x4) exits, HLT #0 is fallback.
 # As with QEMU, the authoritative result is the console marker
-# "[arm-am] exit=N"; the simtrap itself always exits gem5 with status 0.
+# "[arm-am] exit=N"; UART EOT always exits gem5 with status 0.
 
 set -u
 

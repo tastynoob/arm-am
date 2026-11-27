@@ -22,11 +22,14 @@
 #define INST 16
 #endif
 
-#ifndef MEM_TEST_ADDR_BASE
-#define MEM_TEST_ADDR_BASE 0x80010000ULL
-#endif
+#define NODE_REGION_SIZE (1024 * MB)
+#define FLUSH_REGION_SIZE (64 * MB)
 
-#define _PERF_TEST_ADDR_BASE MEM_TEST_ADDR_BASE
+static uint8_t node_area[NODE_REGION_SIZE]
+    __attribute__((section(".test"), aligned(64)));
+static uint8_t flush_area[FLUSH_REGION_SIZE]
+    __attribute__((section(".test"), aligned(64)));
+static uint64_t latency_base;
 
 static uint32_t lfsr_next(uint32_t last)
 {
@@ -89,7 +92,7 @@ static __attribute__((noinline, aligned(64)))
 void cache_iloop(unsigned long long *load_count,
                  unsigned long long *cycle_count)
 {
-    uint64_t node = _PERF_TEST_ADDR_BASE;
+    uint64_t node = latency_base;
     uint64_t start = am_read_cycles();
 
     for (unsigned index = 0; index < 500; index++) {
@@ -105,10 +108,13 @@ int main(void)
 {
     unsigned long long loads;
     unsigned long long cycles;
-    uint64_t start_addr = _PERF_TEST_ADDR_BASE;
+    uint64_t start_addr;
     unsigned footprint_kb = 256 * INST;
     int block_count = 4000;
-    uint64_t flush_start = start_addr + 0x40000000;
+    uint64_t flush_start = (uint64_t)(uintptr_t)flush_area;
+    latency_base = (uint64_t)(uintptr_t)node_area;
+    assert(footprint_kb * 1024ULL <= sizeof(flush_area));
+    start_addr = latency_base;
 
     printf("Intializing linked-list of %i nodes in range 0x%llx-0x%llx with "
            "seed %#x.\n"
@@ -118,7 +124,7 @@ int main(void)
            (unsigned long long)flush_start);
 
     pseudo_random_warmup(start_addr, 0xdeadbeaf /* non-zero */, block_count,
-                         0x40000000);
+                         NODE_REGION_SIZE);
     flush_cache_efficient(footprint_kb, flush_start);
 
     uint64_t instret_1 = am_read_instret();

@@ -10,7 +10,6 @@
 #define ARM_AM_BENCH_H
 
 #include <am.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -59,27 +58,6 @@ static inline void bench_banner_plain(const char *name)
 {
     printf("arm-am: bench %s\n", name);
     bench_pmu_banner();
-}
-
-/*
- * Large-footprint tests allocate their working set from the AM heap instead
- * of .bss, so the boot-time BSS clear never touches a 64 MiB+ buffer.  _sbrk
- * advances the heap break; the returned pointer is aligned to 64 B.
- */
-extern void *_sbrk(ptrdiff_t increment);
-
-static inline void *bench_alloc(uint64_t bytes)
-{
-    void *raw;
-
-    if (bytes == 0) {
-        return NULL;
-    }
-    raw = _sbrk((ptrdiff_t)(bytes + 63U));
-    if (raw == (void *)-1) {
-        return NULL;
-    }
-    return (void *)(((uintptr_t)raw + 63U) & ~(uintptr_t)63U);
 }
 
 /* Parse "64M", "1G", "512K" or a plain byte count. */
