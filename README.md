@@ -9,7 +9,7 @@ AArch64 bare-metal AM runtime and small tests for QEMU `mini-virt`
 | --- | --- |
 | `hello` | Prints a fixed hello message; smoke test for console output and exit |
 | `basic` | Integer loop and small-buffer memory loop with cycle counts |
-| `packedtest` | Checks packed 32-bit register allocation with a 64-bit add |
+| `packedtest` | 32-bit register-file pressure with a streaming load and 24-register blocks |
 | `throughput` | Instruction-throughput test set (ALU, chained ALU, cmp+branch, scalar/pair L1 load/store); one `.bin` per test, shared build rules and README (`throughput/README.md`) |
 | `mix_width` | Mixed-instruction rename/dispatch throughput with independent interleaved ALU/FP/load/store/branch/mul bodies |
 | `stream_ld` | Streaming load bandwidth over a configurable footprint and pass count |
